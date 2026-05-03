@@ -1,0 +1,29 @@
+{
+  "id": "@attebury/topogram-generator-react-web",
+  "version": "1",
+  "surface": "web",
+  "targetKind": "web",
+  "projectionPlatforms": [
+    "ui_web"
+  ],
+  "inputs": [
+    "ui-web-contract",
+    "api-contracts"
+  ],
+  "outputs": [
+    "web-app",
+    "generation-coverage"
+  ],
+  "stack": {
+    "runtime": "browser",
+    "framework": "react",
+    "language": "typescript"
+  },
+  "capabilities": {
+    "routes": true,
+    "components": true,
+    "coverage": true
+  },
+  "source": "package",
+  "package": "@attebury/topogram-generator-react-web"
+}
