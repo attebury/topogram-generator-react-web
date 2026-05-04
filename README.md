@@ -1,6 +1,6 @@
 # Topogram Generator: react
 
-Package-backed Topogram generator for React web apps.
+Package-backed Topogram generator for React/Vite web apps.
 
 ## Manifest
 

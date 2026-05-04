@@ -38,6 +38,13 @@ run(topogramBin, ["generate"], { cwd: projectRoot });
 const outputRoot = path.join(projectRoot, "app", "apps", "web", "app_react");
 assert.equal(fs.existsSync(path.join(projectRoot, "app", ".topogram-generated.json")), true);
 assert.equal(fs.existsSync(path.join(outputRoot, "package.json")), true, `Expected generated package.json`);
+assert.equal(fs.existsSync(path.join(outputRoot, "src", "App.tsx")), true, "Expected React App.tsx");
+assert.equal(fs.existsSync(path.join(outputRoot, "src", "pages", "HomePage.tsx")), true, "Expected React home page");
+assert.equal(fs.existsSync(path.join(outputRoot, "src", "lib", "topogram", "generation-coverage.json")), true, "Expected generation coverage artifact");
+const generatedPackage = JSON.parse(fs.readFileSync(path.join(outputRoot, "package.json"), "utf8"));
+assert.equal(generatedPackage.scripts.check, "tsc --noEmit");
+assert.equal(generatedPackage.dependencies["react-router-dom"], "^6.30.1");
+assert.match(fs.readFileSync(path.join(outputRoot, "src", "App.tsx"), "utf8"), /BrowserRouter/);
 console.log("Package-backed @attebury/topogram-generator-react-web smoke passed.");
 
 function run(command, args, options = {}) { const result = childProcess.spawnSync(command, args, { cwd: options.cwd || root, encoding: "utf8", env: { ...process.env, npm_config_cache: npmCache, PATH: process.env.PATH || "" } }); if (result.status !== 0) throw new Error([ `Command failed: ${command} ${args.join(" ")}`, result.stdout, result.stderr ].filter(Boolean).join("\n")); if (!options.quiet && result.stdout) process.stdout.write(result.stdout); if (!options.quiet && result.stderr) process.stderr.write(result.stderr); return result; }
