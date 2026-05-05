@@ -13,9 +13,9 @@
         "type": "web",
         "projection": "proj_ui_web",
         "generator": {
-          "id": "@attebury/topogram-generator-react-web",
+          "id": "@topogram/generator-react-web",
           "version": "1",
-          "package": "@attebury/topogram-generator-react-web"
+          "package": "@topogram/generator-react-web"
         },
         "port": 5173
       }

@@ -387,7 +387,7 @@ function renderCoverage(contract, files, routes) {
 function generate(context) {
   const contract = context.contracts?.uiWeb;
   if (!contract) {
-    throw new Error("@attebury/topogram-generator-react-web requires contracts.uiWeb.");
+    throw new Error("@topogram/generator-react-web requires contracts.uiWeb.");
   }
   const routes = contractRoutes(contract);
   const projectionId = contract.projection?.id || context.projection?.id || "proj_ui_web";

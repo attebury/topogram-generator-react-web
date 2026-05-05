@@ -1,5 +1,5 @@
 {
-  "id": "@attebury/topogram-generator-react-web",
+  "id": "@topogram/generator-react-web",
   "version": "1",
   "surface": "web",
   "targetKind": "web",
@@ -25,7 +25,7 @@
     "coverage": true
   },
   "source": "package",
-  "package": "@attebury/topogram-generator-react-web",
+  "package": "@topogram/generator-react-web",
   "componentSupport": {
     "patterns": [
       "summary_stats",

@@ -9,7 +9,7 @@ const workRoot = path.join(root, ".tmp", "verify");
 const packRoot = path.join(workRoot, "pack");
 const npmCache = path.join(workRoot, "npm-cache");
 const cliPackageSpec = process.env.TOPOGRAM_CLI_PACKAGE_SPEC || defaultCliPackageSpec();
-const cliDependencySpec = dependencySpecFor("@attebury/topogram", cliPackageSpec);
+const cliDependencySpec = dependencySpecFor("@topogram/cli", cliPackageSpec);
 
 fs.rmSync(workRoot, { recursive: true, force: true });
 fs.mkdirSync(packRoot, { recursive: true });
@@ -25,8 +25,7 @@ const projectRoot = path.join(workRoot, "consumer");
 fs.mkdirSync(projectRoot, { recursive: true });
 fs.cpSync(path.join(root, "test-project-topogram"), path.join(projectRoot, "topogram"), { recursive: true });
 fs.copyFileSync(path.join(root, "test-project-topogram.project.json"), path.join(projectRoot, "topogram.project.json"));
-writeJson(path.join(projectRoot, "package.json"), { name: "topogram-generator-react-web-consumer", private: true, type: "module", devDependencies: { "@attebury/topogram": cliDependencySpec, "@attebury/topogram-generator-react-web": `file:${generatorTarball}` } });
-writeNpmrc(projectRoot);
+writeJson(path.join(projectRoot, "package.json"), { name: "topogram-generator-react-web-consumer", private: true, type: "module", devDependencies: { "@topogram/cli": cliDependencySpec, "@topogram/generator-react-web": `file:${generatorTarball}` } });
 console.log("Installing consumer dependencies...");
 run("npm", ["install"], { cwd: projectRoot, quiet: true });
 const topogramBin = path.join(projectRoot, "node_modules", ".bin", process.platform === "win32" ? "topogram.cmd" : "topogram");
@@ -54,10 +53,9 @@ const generatedPackage = JSON.parse(fs.readFileSync(path.join(outputRoot, "packa
 assert.equal(generatedPackage.scripts.check, "tsc --noEmit");
 assert.equal(generatedPackage.dependencies["react-router-dom"], "^6.30.1");
 assert.match(fs.readFileSync(path.join(outputRoot, "src", "App.tsx"), "utf8"), /BrowserRouter/);
-console.log("Package-backed @attebury/topogram-generator-react-web smoke passed.");
+console.log("Package-backed @topogram/generator-react-web smoke passed.");
 
 function run(command, args, options = {}) { const result = childProcess.spawnSync(command, args, { cwd: options.cwd || root, encoding: "utf8", env: { ...process.env, npm_config_cache: npmCache, PATH: process.env.PATH || "" } }); if (result.status !== 0) throw new Error([ `Command failed: ${command} ${args.join(" ")}`, result.stdout, result.stderr ].filter(Boolean).join("\n")); if (!options.quiet && result.stdout) process.stdout.write(result.stdout); if (!options.quiet && result.stderr) process.stderr.write(result.stderr); return result; }
 function writeJson(filePath, value) { fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8"); }
-function writeNpmrc(projectRoot) { const lines = ["@attebury:registry=https://npm.pkg.github.com"]; if (process.env.NODE_AUTH_TOKEN) lines.push(`//npm.pkg.github.com/:_authToken=${process.env.NODE_AUTH_TOKEN}`); lines.push(""); fs.writeFileSync(path.join(projectRoot, ".npmrc"), lines.join("\n"), "utf8"); }
 function dependencySpecFor(packageName, packageSpec) { const prefix = `${packageName}@`; return packageSpec.startsWith(prefix) ? packageSpec.slice(prefix.length) : packageSpec; }
-function defaultCliPackageSpec() { const version = fs.readFileSync(path.join(root, "topogram-cli.version"), "utf8").trim(); if (!version) throw new Error("topogram-cli.version must contain the Topogram CLI version used by package smoke verification."); return `@attebury/topogram@${version}`; }
+function defaultCliPackageSpec() { const version = fs.readFileSync(path.join(root, "topogram-cli.version"), "utf8").trim(); if (!version) throw new Error("topogram-cli.version must contain the Topogram CLI version used by package smoke verification."); return `@topogram/cli@${version}`; }
