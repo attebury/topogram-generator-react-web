@@ -43,7 +43,7 @@ function sampleItemsForScreen(screen) {
       name: `${title} sample`,
       message: `${title} sample`,
       description: "Generated from Topogram UI contract metadata.",
-      status: "active",
+      category: "sample",
       priority: "medium",
       created_at: "2026-01-01"
     },
@@ -53,7 +53,7 @@ function sampleItemsForScreen(screen) {
       name: `${title} completed sample`,
       message: `${title} completed sample`,
       description: "Second generated row for rendering checks.",
-      status: "completed",
+      category: "sample",
       priority: "low",
       created_at: "2026-01-02"
     }
@@ -104,7 +104,7 @@ function renderSampleRowsSection() {
     '                  <strong>{item.title}</strong>',
     '                  <span className="muted">{item.description}</span>',
     '                </div>',
-    '                <span className="badge">{item.status}</span>',
+    '                <span className="badge">{Object.keys(item).length} fields</span>',
     '              </li>',
     '            ))}',
     '          </ul>',
