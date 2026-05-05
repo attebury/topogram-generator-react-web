@@ -60,6 +60,66 @@ function sampleItemsForScreen(screen) {
   ];
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function componentId(usage) {
+  return usage?.component?.id || "component";
+}
+
+function componentName(usage) {
+  return usage?.component?.name || usage?.component?.id || "Component";
+}
+
+function renderComponentUsage(usage) {
+  const id = escapeHtml(componentId(usage));
+  const name = escapeHtml(componentName(usage));
+  const region = escapeHtml(usage?.region || "region");
+  return [
+    '<section className="component-card component-generic" data-topogram-component="' + id + '">',
+    '  <p className="component-eyebrow">' + region + ' component</p>',
+    '  <h2>' + name + '</h2>',
+    '  <p className="muted">Rendered from the Topogram component contract.</p>',
+    '</section>'
+  ].join("\n");
+}
+
+function renderComponentSections(screen) {
+  return (screen?.components || []).map(renderComponentUsage).filter(Boolean).join("\n\n");
+}
+
+function renderSampleRowsSection() {
+  return [
+    '        <section className="card">',
+    '          <h2>Sample rows</h2>',
+    '          <ul className="resource-list">',
+    '            {items.map((item) => (',
+    '              <li key={item.id}>',
+    '                <div className="resource-meta">',
+    '                  <strong>{item.title}</strong>',
+    '                  <span className="muted">{item.description}</span>',
+    '                </div>',
+    '                <span className="badge">{item.status}</span>',
+    '              </li>',
+    '            ))}',
+    '          </ul>',
+    '        </section>'
+  ].join("\n");
+}
+
+function componentUsageRecordsForScreen(screen) {
+  return (screen?.components || []).map((usage) => ({
+    component: componentId(usage),
+    region: usage?.region || null,
+    rendered: true
+  }));
+}
+
 function renderPackageJson(projectionId) {
   return `${JSON.stringify({
     name: projectionId,
@@ -197,6 +257,7 @@ export function HomePage() {
 function renderScreenPage(route) {
   const screen = route.screen || {};
   const items = sampleItemsForScreen(screen);
+  const sampleSection = renderComponentSections(screen) || renderSampleRowsSection();
   return `const items: any[] = ${JSON.stringify(items, null, 2)};
 
 export function ${componentNameForScreen(route.id)}() {
@@ -209,20 +270,7 @@ export function ${componentNameForScreen(route.id)}() {
           <p>This React page was generated from <code>${route.id}</code>.</p>
         </section>
 
-        <section className="card">
-          <h2>Sample rows</h2>
-          <ul className="resource-list">
-            {items.map((item) => (
-              <li key={item.id}>
-                <div className="resource-meta">
-                  <strong>{item.title}</strong>
-                  <span className="muted">{item.description}</span>
-                </div>
-                <span className="badge">{item.status}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        ${sampleSection}
       </div>
     </main>
   );
@@ -290,6 +338,8 @@ main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 .resource-list { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.75rem; }
 .resource-list li { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; border: 1px solid #e0e8f1; border-radius: 14px; background: #fbfcfe; }
 .resource-meta { display: grid; gap: 0.35rem; }
+.component-card { border: 1px solid #d7e1ec; border-radius: 14px; background: #fbfcfe; padding: 1rem; margin-top: 1rem; }
+.component-eyebrow { margin: 0 0 0.25rem; color: #607284; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.6rem; border-radius: 999px; background: #eef4ff; color: #0f5cc0; font-size: 0.85rem; font-weight: 600; }
 .muted { color: #607284; }
 @media (max-width: 640px) { .resource-list li { flex-direction: column; } .app-nav { flex-wrap: wrap; } }
@@ -305,9 +355,10 @@ function renderCoverage(contract, files, routes) {
       page,
       rendered: Boolean(files[page]),
       renderer: files[page] ? "generator" : "missing",
-      component_usages: []
+      component_usages: componentUsageRecordsForScreen(route.screen)
     };
   });
+  const usageCount = screens.reduce((total, screen) => total + screen.component_usages.length, 0);
   return {
     type: "generation_coverage",
     surface: "web",
@@ -322,8 +373,8 @@ function renderCoverage(contract, files, routes) {
       rendered_screens: screens.filter((screen) => screen.rendered).length,
       implementation_screens: 0,
       generator_screens: screens.filter((screen) => screen.renderer === "generator").length,
-      component_usages: 0,
-      rendered_component_usages: 0,
+      component_usages: usageCount,
+      rendered_component_usages: usageCount,
       diagnostics: 0,
       errors: 0,
       warnings: 0

@@ -25,5 +25,24 @@
     "coverage": true
   },
   "source": "package",
-  "package": "@attebury/topogram-generator-react-web"
+  "package": "@attebury/topogram-generator-react-web",
+  "componentSupport": {
+    "patterns": [
+      "summary_stats",
+      "board_view",
+      "calendar_view",
+      "resource_table",
+      "data_grid_view"
+    ],
+    "behaviors": [
+      "selection",
+      "sorting",
+      "filtering",
+      "search",
+      "pagination",
+      "bulk_action",
+      "optimistic_update"
+    ],
+    "unsupported": "warning"
+  }
 }

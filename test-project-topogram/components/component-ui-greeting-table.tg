@@ -1,0 +1,13 @@
+component component_ui_greeting_table {
+  name "Greeting Table"
+  description "Reusable table component for greeting rows"
+  category collection
+
+  props {
+    rows array required
+  }
+
+  patterns [resource_table]
+  regions [results]
+  status active
+}

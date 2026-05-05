@@ -43,6 +43,13 @@ assert.equal(fs.existsSync(path.join(outputRoot, "package.json")), true, `Expect
 assert.equal(fs.existsSync(path.join(outputRoot, "src", "App.tsx")), true, "Expected React App.tsx");
 assert.equal(fs.existsSync(path.join(outputRoot, "src", "pages", "HomePage.tsx")), true, "Expected React home page");
 assert.equal(fs.existsSync(path.join(outputRoot, "src", "lib", "topogram", "generation-coverage.json")), true, "Expected generation coverage artifact");
+const greetingListPage = fs.readFileSync(path.join(outputRoot, "src", "pages", "GreetingListPage.tsx"), "utf8");
+assert.match(greetingListPage, /data-topogram-component="component_ui_greeting_table"/);
+assert.match(greetingListPage, /className="component-card component-generic"/);
+const coverage = JSON.parse(fs.readFileSync(path.join(outputRoot, "src", "lib", "topogram", "generation-coverage.json"), "utf8"));
+assert.equal(coverage.summary.component_usages, 1);
+assert.equal(coverage.summary.rendered_component_usages, 1);
+assert.deepEqual(coverage.diagnostics, []);
 const generatedPackage = JSON.parse(fs.readFileSync(path.join(outputRoot, "package.json"), "utf8"));
 assert.equal(generatedPackage.scripts.check, "tsc --noEmit");
 assert.equal(generatedPackage.dependencies["react-router-dom"], "^6.30.1");
