@@ -43,6 +43,6 @@
       "bulk_action",
       "optimistic_update"
     ],
-    "unsupported": "warning"
+    "unsupported": "error"
   }
 }

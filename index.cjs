@@ -76,6 +76,27 @@ function componentName(usage) {
   return usage?.component?.name || usage?.component?.id || "Component";
 }
 
+function componentContractFor(usage, componentContracts) {
+  const id = componentId(usage);
+  return componentContracts?.[id] || {};
+}
+
+function componentPatterns(usage, componentContracts) {
+  return componentContractFor(usage, componentContracts).patterns || [];
+}
+
+function componentUsagePattern(usage, componentContracts) {
+  return usage?.pattern || componentPatterns(usage, componentContracts)[0] || null;
+}
+
+function componentUsageSupport(usage, componentContracts) {
+  const pattern = componentUsagePattern(usage, componentContracts);
+  return {
+    pattern,
+    supported: (manifest.componentSupport?.patterns || []).includes(pattern || "")
+  };
+}
+
 function renderComponentUsage(usage) {
   const id = escapeHtml(componentId(usage));
   const name = escapeHtml(componentName(usage));
@@ -112,12 +133,31 @@ function renderSampleRowsSection() {
   ].join("\n");
 }
 
-function componentUsageRecordsForScreen(screen) {
-  return (screen?.components || []).map((usage) => ({
-    component: componentId(usage),
-    region: usage?.region || null,
-    rendered: true
-  }));
+function componentUsageRecordsForScreen(screen, componentContracts, diagnostics) {
+  return (screen?.components || []).map((usage) => {
+    const component = componentId(usage);
+    const support = componentUsageSupport(usage, componentContracts);
+    if (!support.supported) {
+      diagnostics.push({
+        code: "component_pattern_not_supported",
+        severity: "error",
+        screen: screen?.id || null,
+        route: screen?.route || null,
+        region: usage?.region || null,
+        pattern: support.pattern || null,
+        component,
+        message: `Screen '${screen?.id || "unknown"}' uses component '${component}' with unsupported React component pattern '${support.pattern || "(missing)"}'.`,
+        suggested_fix: "Use a supported component pattern for this generator or provide an implementation override."
+      });
+    }
+    return {
+      component,
+      region: usage?.region || null,
+      pattern: support.pattern || null,
+      supported: support.supported,
+      rendered: true
+    };
+  });
 }
 
 function renderPackageJson(projectionId) {
@@ -347,6 +387,8 @@ main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 }
 
 function renderCoverage(contract, files, routes) {
+  const diagnostics = [];
+  const componentContracts = contract.components || {};
   const screens = routes.map((route) => {
     const page = `src/pages/${componentNameForScreen(route.id)}.tsx`;
     return {
@@ -355,10 +397,12 @@ function renderCoverage(contract, files, routes) {
       page,
       rendered: Boolean(files[page]),
       renderer: files[page] ? "generator" : "missing",
-      component_usages: componentUsageRecordsForScreen(route.screen)
+      component_usages: componentUsageRecordsForScreen(route.screen, componentContracts, diagnostics)
     };
   });
   const usageCount = screens.reduce((total, screen) => total + screen.component_usages.length, 0);
+  const errorCount = diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
+  const warningCount = diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length;
   return {
     type: "generation_coverage",
     surface: "web",
@@ -374,14 +418,23 @@ function renderCoverage(contract, files, routes) {
       implementation_screens: 0,
       generator_screens: screens.filter((screen) => screen.renderer === "generator").length,
       component_usages: usageCount,
-      rendered_component_usages: usageCount,
-      diagnostics: 0,
-      errors: 0,
-      warnings: 0
+      rendered_component_usages: screens.reduce((total, screen) => total + screen.component_usages.filter((usage) => usage.rendered).length, 0),
+      diagnostics: diagnostics.length,
+      errors: errorCount,
+      warnings: warningCount
     },
     screens,
-    diagnostics: []
+    diagnostics
   };
+}
+
+function assertGenerationCoverage(coverage) {
+  const errors = (coverage.diagnostics || []).filter((diagnostic) => diagnostic.severity === "error");
+  if (errors.length === 0) {
+    return;
+  }
+  const details = errors.map((diagnostic) => diagnostic.message).join("; ");
+  throw new Error(`React generation coverage failed: ${details}`);
 }
 
 function generate(context) {
@@ -408,7 +461,9 @@ function generate(context) {
   for (const route of routes) {
     files[`src/pages/${componentNameForScreen(route.id)}.tsx`] = renderScreenPage(route);
   }
-  files["src/lib/topogram/generation-coverage.json"] = `${JSON.stringify(renderCoverage(contract, files, routes), null, 2)}\n`;
+  const coverage = renderCoverage(contract, files, routes);
+  assertGenerationCoverage(coverage);
+  files["src/lib/topogram/generation-coverage.json"] = `${JSON.stringify(coverage, null, 2)}\n`;
   return {
     files,
     artifacts: {

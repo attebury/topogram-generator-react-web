@@ -48,11 +48,44 @@ assert.match(greetingListPage, /className="component-card component-generic"/);
 const coverage = JSON.parse(fs.readFileSync(path.join(outputRoot, "src", "lib", "topogram", "generation-coverage.json"), "utf8"));
 assert.equal(coverage.summary.component_usages, 1);
 assert.equal(coverage.summary.rendered_component_usages, 1);
+assert.equal(coverage.screens[0].component_usages[0].pattern, "resource_table");
+assert.equal(coverage.screens[0].component_usages[0].supported, true);
 assert.deepEqual(coverage.diagnostics, []);
 const generatedPackage = JSON.parse(fs.readFileSync(path.join(outputRoot, "package.json"), "utf8"));
 assert.equal(generatedPackage.scripts.check, "tsc --noEmit");
 assert.equal(generatedPackage.dependencies["react-router-dom"], "^6.30.1");
 assert.match(fs.readFileSync(path.join(outputRoot, "src", "App.tsx"), "utf8"), /BrowserRouter/);
+const adapter = await import(path.join(root, "index.cjs"));
+assert.throws(
+  () => adapter.default.generate({
+    projection: { id: "proj_ui_web" },
+    contracts: {
+      uiWeb: {
+        projection: { id: "proj_ui_web", platform: "ui_web" },
+        appShell: { brand: "Unsupported Pattern" },
+        components: {
+          component_lookup: { patterns: ["lookup_select"] }
+        },
+        screens: [
+          {
+            id: "lookup_screen",
+            title: "Lookup",
+            route: "/lookup",
+            components: [
+              {
+                region: "results",
+                pattern: "lookup_select",
+                component: { id: "component_lookup", name: "Lookup" }
+              }
+            ]
+          }
+        ],
+        navigation: { items: [{ screenId: "lookup_screen", label: "Lookup", route: "/lookup" }] }
+      }
+    }
+  }),
+  /unsupported React component pattern 'lookup_select'/
+);
 console.log("Package-backed @topogram/generator-react-web smoke passed.");
 
 function run(command, args, options = {}) { const result = childProcess.spawnSync(command, args, { cwd: options.cwd || root, encoding: "utf8", env: { ...process.env, npm_config_cache: npmCache, PATH: process.env.PATH || "" } }); if (result.status !== 0) throw new Error([ `Command failed: ${command} ${args.join(" ")}`, result.stdout, result.stderr ].filter(Boolean).join("\n")); if (!options.quiet && result.stdout) process.stdout.write(result.stdout); if (!options.quiet && result.stderr) process.stderr.write(result.stderr); return result; }
