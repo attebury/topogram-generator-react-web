@@ -1,5 +1,123 @@
 const manifest = require("./topogram-generator.json");
 
+const DEFAULT_DESIGN_INTENT = Object.freeze({
+  density: "comfortable",
+  tone: "neutral",
+  radiusScale: "medium",
+  colorRoles: Object.freeze({ primary: "accent" }),
+  typographyRoles: Object.freeze({ body: "readable", heading: "prominent" }),
+  actionRoles: Object.freeze({ primary: "prominent" }),
+  accessibility: Object.freeze({ contrast: "aa", focus: "visible" })
+});
+const DENSITY_VALUES = {
+  compact: { spaceUnit: "0.75rem", pagePadding: "1.5rem 1rem 3rem", controlPadding: "0.55rem 0.75rem" },
+  comfortable: { spaceUnit: "1rem", pagePadding: "2rem 1.25rem 4rem", controlPadding: "0.7rem 1rem" },
+  spacious: { spaceUnit: "1.25rem", pagePadding: "2.5rem 1.5rem 5rem", controlPadding: "0.85rem 1.15rem" }
+};
+const RADIUS_VALUES = {
+  none: { card: "0", control: "0", pill: "0" },
+  small: { card: "8px", control: "8px", pill: "999px" },
+  medium: { card: "14px", control: "12px", pill: "999px" },
+  large: { card: "18px", control: "16px", pill: "999px" }
+};
+const COLOR_VALUES = { accent: "#0f5cc0", critical: "#b42318", danger: "#b42318", success: "#027a48", warning: "#b54708", neutral: "#516173", muted: "#607284" };
+const TONE_VALUES = {
+  neutral: { text: "#182026", muted: "#607284", background: "linear-gradient(180deg, #f5f7fb 0%, #edf2f7 100%)", surface: "#ffffff", surfaceSubtle: "#fbfcfe", border: "#d7e1ec" },
+  operational: { text: "#182026", muted: "#607284", background: "linear-gradient(180deg, #f5f7fb 0%, #edf2f7 100%)", surface: "#ffffff", surfaceSubtle: "#fbfcfe", border: "#d7e1ec" },
+  editorial: { text: "#1f2933", muted: "#5c6670", background: "linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%)", surface: "#ffffff", surfaceSubtle: "#f8fafc", border: "#d8dee8" },
+  playful: { text: "#1f2937", muted: "#5b6472", background: "linear-gradient(180deg, #f7fbff 0%, #eef6ff 100%)", surface: "#ffffff", surfaceSubtle: "#f7fbff", border: "#d6e4f5" }
+};
+
+function cssToken(value) { return String(value || "default").replace(/[^A-Za-z0-9_-]/g, "_"); }
+function mergeStringMap(source, fallback) { return { ...fallback, ...(source && typeof source === "object" ? source : {}) }; }
+function normalizeDesignIntent(design) {
+  const value = design && typeof design === "object" ? design : {};
+  return {
+    density: typeof value.density === "string" ? value.density : DEFAULT_DESIGN_INTENT.density,
+    tone: typeof value.tone === "string" ? value.tone : DEFAULT_DESIGN_INTENT.tone,
+    radiusScale: typeof value.radiusScale === "string" ? value.radiusScale : DEFAULT_DESIGN_INTENT.radiusScale,
+    colorRoles: mergeStringMap(value.colorRoles, DEFAULT_DESIGN_INTENT.colorRoles),
+    typographyRoles: mergeStringMap(value.typographyRoles, DEFAULT_DESIGN_INTENT.typographyRoles),
+    actionRoles: mergeStringMap(value.actionRoles, DEFAULT_DESIGN_INTENT.actionRoles),
+    accessibility: mergeStringMap(value.accessibility, DEFAULT_DESIGN_INTENT.accessibility)
+  };
+}
+function tokenMapLines(map, prefix) {
+  return Object.entries(map).sort(([left], [right]) => left.localeCompare(right)).map(([role, value]) => `  --topogram-design-${prefix}-${cssToken(role)}: ${cssToken(value)};`);
+}
+function renderDesignIntentCss(design) {
+  const normalized = normalizeDesignIntent(design);
+  const tone = TONE_VALUES[normalized.tone] || TONE_VALUES.neutral;
+  const density = DENSITY_VALUES[normalized.density] || DENSITY_VALUES.comfortable;
+  const radius = RADIUS_VALUES[normalized.radiusScale] || RADIUS_VALUES.medium;
+  const primaryColor = COLOR_VALUES[normalized.colorRoles.primary] || COLOR_VALUES.accent;
+  const dangerColor = COLOR_VALUES[normalized.colorRoles.danger] || COLOR_VALUES.critical;
+  return `/* Topogram semantic design intent. Generators map normalized UI tokens to stack CSS here. */
+:root {
+  --topogram-design-density: ${cssToken(normalized.density)};
+  --topogram-design-tone: ${cssToken(normalized.tone)};
+  --topogram-design-radius-scale: ${cssToken(normalized.radiusScale)};
+${tokenMapLines(normalized.colorRoles, "color").join("\n")}
+${tokenMapLines(normalized.typographyRoles, "typography").join("\n")}
+${tokenMapLines(normalized.actionRoles, "action").join("\n")}
+${tokenMapLines(normalized.accessibility, "accessibility").join("\n")}
+  --topogram-space-unit: ${density.spaceUnit};
+  --topogram-page-padding: ${density.pagePadding};
+  --topogram-control-padding: ${density.controlPadding};
+  --topogram-radius-card: ${radius.card};
+  --topogram-radius-control: ${radius.control};
+  --topogram-radius-pill: ${radius.pill};
+  --topogram-text-color: ${tone.text};
+  --topogram-muted-color: ${tone.muted};
+  --topogram-surface-background: ${tone.background};
+  --topogram-surface-card: ${tone.surface};
+  --topogram-surface-subtle: ${tone.surfaceSubtle};
+  --topogram-border-color: ${tone.border};
+  --topogram-action-primary-background: ${primaryColor};
+  --topogram-action-primary-color: #ffffff;
+  --topogram-action-danger-background: ${dangerColor};
+  --topogram-focus-outline: 3px solid ${primaryColor};
+}
+`;
+}
+function requiredDesignMarkers(design) {
+  return [
+    { category: "density", role: null, value: design.density, marker: "--topogram-design-density" },
+    { category: "tone", role: null, value: design.tone, marker: "--topogram-design-tone" },
+    { category: "radius_scale", role: null, value: design.radiusScale, marker: "--topogram-design-radius-scale" },
+    ...Object.entries(design.colorRoles).map(([role, value]) => ({ category: "color_roles", role, value, marker: `--topogram-design-color-${cssToken(role)}` })),
+    ...Object.entries(design.typographyRoles).map(([role, value]) => ({ category: "typography_roles", role, value, marker: `--topogram-design-typography-${cssToken(role)}` })),
+    ...Object.entries(design.actionRoles).map(([role, value]) => ({ category: "action_roles", role, value, marker: `--topogram-design-action-${cssToken(role)}` })),
+    ...Object.entries(design.accessibility).map(([role, value]) => ({ category: "accessibility", role, value, marker: `--topogram-design-accessibility-${cssToken(role)}` }))
+  ];
+}
+function buildDesignIntentCoverage(contract, files, cssPath) {
+  const design = normalizeDesignIntent(contract?.design);
+  const css = files[cssPath] || "";
+  const markers = requiredDesignMarkers(design);
+  const mapped = markers.filter((item) => css.includes(item.marker));
+  const missing = markers.filter((item) => !css.includes(item.marker));
+  return {
+    coverage: {
+      status: missing.length === 0 ? "mapped" : "unmapped",
+      css_path: cssPath,
+      tokens: { density: design.density, tone: design.tone, radius_scale: design.radiusScale, color_roles: design.colorRoles, typography_roles: design.typographyRoles, action_roles: design.actionRoles, accessibility: design.accessibility },
+      mapped: mapped.map((item) => ({ category: item.category, role: item.role, value: item.value, marker: item.marker })),
+      missing: missing.map((item) => ({ category: item.category, role: item.role, value: item.value, marker: item.marker }))
+    },
+    diagnostics: missing.map((item) => ({
+      code: "design_intent_not_mapped",
+      severity: "error",
+      category: item.category,
+      role: item.role,
+      value: item.value,
+      marker: item.marker,
+      message: `UI design intent token '${item.category}${item.role ? `.${item.role}` : ""}' was not mapped into ${cssPath}.`,
+      suggested_fix: "Render Topogram semantic design variables before writing the web stylesheet."
+    }))
+  };
+}
+
 function componentNameForScreen(screenId) {
   return `${String(screenId || "screen")
     .split(/[_\-\s]+/)
@@ -356,22 +474,24 @@ ${routeLines}
 `;
 }
 
-function renderCss() {
-  return `:root {
+function renderCss(design) {
+  return `${renderDesignIntentCss(design)}
+
+:root {
   font-family: system-ui, sans-serif;
-  color: #182026;
-  background: linear-gradient(180deg, #f5f7fb 0%, #edf2f7 100%);
+  color: var(--topogram-text-color);
+  background: var(--topogram-surface-background);
 }
 body { margin: 0; }
-a { color: #0f5cc0; text-decoration: none; }
+a { color: var(--topogram-action-primary-background); text-decoration: none; }
 a:hover { text-decoration: underline; }
-main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+main { max-width: 72rem; margin: 0 auto; padding: var(--topogram-page-padding); }
 .app-shell { min-height: 100vh; }
 .app-nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid rgba(24, 32, 38, 0.08); background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); }
 .app-nav-links { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .brand { font-weight: 700; letter-spacing: 0.01em; }
-.card { background: white; border-radius: 16px; padding: 1.25rem; box-shadow: 0 12px 30px rgba(24, 32, 38, 0.08); }
-.hero, .stack, .grid { display: grid; gap: 1rem; }
+.card { background: var(--topogram-surface-card); border-radius: var(--topogram-radius-card); padding: 1.25rem; box-shadow: 0 12px 30px rgba(24, 32, 38, 0.08); }
+.hero, .stack, .grid { display: grid; gap: var(--topogram-space-unit); }
 .grid.two { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
 .button-link { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0.7rem 1rem; background: #0f5cc0; color: white; font-weight: 600; }
 .button-row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
@@ -381,13 +501,15 @@ main { max-width: 72rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
 .component-card { border: 1px solid #d7e1ec; border-radius: 14px; background: #fbfcfe; padding: 1rem; margin-top: 1rem; }
 .component-eyebrow { margin: 0 0 0.25rem; color: #607284; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.6rem; border-radius: 999px; background: #eef4ff; color: #0f5cc0; font-size: 0.85rem; font-weight: 600; }
-.muted { color: #607284; }
+.muted { color: var(--topogram-muted-color); }
 @media (max-width: 640px) { .resource-list li { flex-direction: column; } .app-nav { flex-wrap: wrap; } }
 `;
 }
 
 function renderCoverage(contract, files, routes) {
   const diagnostics = [];
+  const designIntent = buildDesignIntentCoverage(contract, files, "src/app.css");
+  diagnostics.push(...designIntent.diagnostics);
   const componentContracts = contract.components || {};
   const screens = routes.map((route) => {
     const page = `src/pages/${componentNameForScreen(route.id)}.tsx`;
@@ -423,6 +545,7 @@ function renderCoverage(contract, files, routes) {
       errors: errorCount,
       warnings: warningCount
     },
+    design_intent: designIntent.coverage,
     screens,
     diagnostics
   };
@@ -452,7 +575,7 @@ function generate(context) {
     "index.html": renderIndexHtml(brand),
     "src/main.tsx": renderMainTsx(),
     "src/vite-env.d.ts": "/// <reference types=\"vite/client\" />\n",
-    "src/app.css": renderCss(),
+    "src/app.css": renderCss(contract.design),
     "src/App.tsx": renderAppTsx(contract, routes),
     "src/pages/HomePage.tsx": renderHomePage(contract, routes),
     "src/lib/topogram/api-contracts.json": `${JSON.stringify(context.contracts?.api || {}, null, 2)}\n`,
