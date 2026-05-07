@@ -2,12 +2,8 @@
   "id": "@topogram/generator-react-web",
   "version": "1",
   "surface": "web",
-  "targetKind": "web",
-  "projectionPlatforms": [
-    "ui_web"
-  ],
   "inputs": [
-    "ui-web-contract",
+    "ui-surface-contract",
     "api-contracts"
   ],
   "outputs": [
@@ -21,12 +17,18 @@
   },
   "capabilities": {
     "routes": true,
-    "components": true,
-    "coverage": true
+    "coverage": true,
+    "widgets": true
   },
   "source": "package",
   "package": "@topogram/generator-react-web",
-  "componentSupport": {
+  "runtimeKinds": [
+    "web_surface"
+  ],
+  "projectionTypes": [
+    "web_surface"
+  ],
+  "widgetSupport": {
     "patterns": [
       "summary_stats",
       "board_view",

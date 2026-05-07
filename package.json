@@ -1,13 +1,13 @@
 {
   "name": "@topogram/generator-react-web",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Package-backed Topogram generator for React web apps.",
   "license": "UNLICENSED",
   "private": false,
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/attebury/topogram-generator-react-web"
+    "url": "git+https://github.com/attebury/topogram-generator-react-web.git"
   },
   "main": "index.cjs",
   "files": [
@@ -24,6 +24,6 @@
     "access": "public"
   },
   "devDependencies": {
-    "@topogram/cli": "^0.3.51"
+    "@topogram/cli": "^0.3.52"
   }
 }

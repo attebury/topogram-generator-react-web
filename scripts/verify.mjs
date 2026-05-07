@@ -44,13 +44,13 @@ assert.equal(fs.existsSync(path.join(outputRoot, "src", "App.tsx")), true, "Expe
 assert.equal(fs.existsSync(path.join(outputRoot, "src", "pages", "HomePage.tsx")), true, "Expected React home page");
 assert.equal(fs.existsSync(path.join(outputRoot, "src", "lib", "topogram", "generation-coverage.json")), true, "Expected generation coverage artifact");
 const greetingListPage = fs.readFileSync(path.join(outputRoot, "src", "pages", "GreetingListPage.tsx"), "utf8");
-assert.match(greetingListPage, /data-topogram-component="component_ui_greeting_table"/);
-assert.match(greetingListPage, /className="component-card component-generic"/);
+assert.match(greetingListPage, /data-topogram-widget="widget_ui_greeting_table"/);
+assert.match(greetingListPage, /className="widget-card widget-generic"/);
 const coverage = JSON.parse(fs.readFileSync(path.join(outputRoot, "src", "lib", "topogram", "generation-coverage.json"), "utf8"));
-assert.equal(coverage.summary.component_usages, 1);
-assert.equal(coverage.summary.rendered_component_usages, 1);
-assert.equal(coverage.screens[0].component_usages[0].pattern, "resource_table");
-assert.equal(coverage.screens[0].component_usages[0].supported, true);
+assert.equal(coverage.summary.widget_usages, 1);
+assert.equal(coverage.summary.rendered_widget_usages, 1);
+assert.equal(coverage.screens[0].widget_usages[0].pattern, "resource_table");
+assert.equal(coverage.screens[0].widget_usages[0].supported, true);
 assert.equal(coverage.design_intent.status, "mapped");
 assert.equal(coverage.design_intent.tokens.density, "compact");
 assert.equal(coverage.design_intent.tokens.color_roles.primary, "accent");
@@ -65,24 +65,24 @@ assert.match(fs.readFileSync(path.join(outputRoot, "src", "App.tsx"), "utf8"), /
 const adapter = await import(path.join(root, "index.cjs"));
 assert.throws(
   () => adapter.default.generate({
-    projection: { id: "proj_ui_web" },
+    projection: { id: "proj_web_surface" },
     contracts: {
-      uiWeb: {
-        projection: { id: "proj_ui_web", platform: "ui_web" },
+      uiSurface: {
+        projection: { id: "proj_web_surface", type: "web_surface" },
         appShell: { brand: "Unsupported Pattern" },
-        components: {
-          component_lookup: { patterns: ["lookup_select"] }
+        widgets: {
+          widget_lookup: { patterns: ["lookup_select"] }
         },
         screens: [
           {
             id: "lookup_screen",
             title: "Lookup",
             route: "/lookup",
-            components: [
+            widgets: [
               {
                 region: "results",
                 pattern: "lookup_select",
-                component: { id: "component_lookup", name: "Lookup" }
+                widget: { id: "widget_lookup", name: "Lookup" }
               }
             ]
           }
@@ -91,7 +91,7 @@ assert.throws(
       }
     }
   }),
-  /unsupported React component pattern 'lookup_select'/
+  /unsupported React widget pattern 'lookup_select'/
 );
 console.log("Package-backed @topogram/generator-react-web smoke passed.");
 

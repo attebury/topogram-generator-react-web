@@ -92,7 +92,7 @@ function requiredDesignMarkers(design) {
   ];
 }
 function buildDesignIntentCoverage(contract, files, cssPath) {
-  const design = normalizeDesignIntent(contract?.design);
+  const design = normalizeDesignIntent(contract?.designTokens);
   const css = files[cssPath] || "";
   const markers = requiredDesignMarkers(design);
   const mapped = markers.filter((item) => css.includes(item.marker));
@@ -187,11 +187,11 @@ function escapeHtml(value) {
 }
 
 function componentId(usage) {
-  return usage?.component?.id || "component";
+  return usage?.widget?.id || "widget";
 }
 
 function componentName(usage) {
-  return usage?.component?.name || usage?.component?.id || "Component";
+  return usage?.widget?.name || usage?.widget?.id || "Widget";
 }
 
 function componentContractFor(usage, componentContracts) {
@@ -211,7 +211,7 @@ function componentUsageSupport(usage, componentContracts) {
   const pattern = componentUsagePattern(usage, componentContracts);
   return {
     pattern,
-    supported: (manifest.componentSupport?.patterns || []).includes(pattern || "")
+    supported: (manifest.widgetSupport?.patterns || []).includes(pattern || "")
   };
 }
 
@@ -220,16 +220,16 @@ function renderComponentUsage(usage) {
   const name = escapeHtml(componentName(usage));
   const region = escapeHtml(usage?.region || "region");
   return [
-    '<section className="component-card component-generic" data-topogram-component="' + id + '">',
-    '  <p className="component-eyebrow">' + region + ' component</p>',
+    '<section className="widget-card widget-generic" data-topogram-widget="' + id + '">',
+    '  <p className="widget-eyebrow">' + region + ' widget</p>',
     '  <h2>' + name + '</h2>',
-    '  <p className="muted">Rendered from the Topogram component contract.</p>',
+    '  <p className="muted">Rendered from the Topogram widget contract.</p>',
     '</section>'
   ].join("\n");
 }
 
 function renderComponentSections(screen) {
-  return (screen?.components || []).map(renderComponentUsage).filter(Boolean).join("\n\n");
+  return (screen?.widgets || []).map(renderComponentUsage).filter(Boolean).join("\n\n");
 }
 
 function renderSampleRowsSection() {
@@ -252,24 +252,24 @@ function renderSampleRowsSection() {
 }
 
 function componentUsageRecordsForScreen(screen, componentContracts, diagnostics) {
-  return (screen?.components || []).map((usage) => {
-    const component = componentId(usage);
+  return (screen?.widgets || []).map((usage) => {
+    const widget = componentId(usage);
     const support = componentUsageSupport(usage, componentContracts);
     if (!support.supported) {
       diagnostics.push({
-        code: "component_pattern_not_supported",
+        code: "widget_pattern_not_supported",
         severity: "error",
         screen: screen?.id || null,
         route: screen?.route || null,
         region: usage?.region || null,
         pattern: support.pattern || null,
-        component,
-        message: `Screen '${screen?.id || "unknown"}' uses component '${component}' with unsupported React component pattern '${support.pattern || "(missing)"}'.`,
-        suggested_fix: "Use a supported component pattern for this generator or provide an implementation override."
+        widget,
+        message: `Screen '${screen?.id || "unknown"}' uses widget '${widget}' with unsupported React widget pattern '${support.pattern || "(missing)"}'.`,
+        suggested_fix: "Use a supported widget pattern for this generator or provide an implementation override."
       });
     }
     return {
-      component,
+      widget,
       region: usage?.region || null,
       pattern: support.pattern || null,
       supported: support.supported,
@@ -498,8 +498,8 @@ main { max-width: 72rem; margin: 0 auto; padding: var(--topogram-page-padding); 
 .resource-list { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: 0.75rem; }
 .resource-list li { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; border: 1px solid #e0e8f1; border-radius: 14px; background: #fbfcfe; }
 .resource-meta { display: grid; gap: 0.35rem; }
-.component-card { border: 1px solid #d7e1ec; border-radius: 14px; background: #fbfcfe; padding: 1rem; margin-top: 1rem; }
-.component-eyebrow { margin: 0 0 0.25rem; color: #607284; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.widget-card { border: 1px solid #d7e1ec; border-radius: 14px; background: #fbfcfe; padding: 1rem; margin-top: 1rem; }
+.widget-eyebrow { margin: 0 0 0.25rem; color: #607284; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.6rem; border-radius: 999px; background: #eef4ff; color: #0f5cc0; font-size: 0.85rem; font-weight: 600; }
 .muted { color: var(--topogram-muted-color); }
 @media (max-width: 640px) { .resource-list li { flex-direction: column; } .app-nav { flex-wrap: wrap; } }
@@ -510,7 +510,7 @@ function renderCoverage(contract, files, routes) {
   const diagnostics = [];
   const designIntent = buildDesignIntentCoverage(contract, files, "src/app.css");
   diagnostics.push(...designIntent.diagnostics);
-  const componentContracts = contract.components || {};
+  const componentContracts = contract.widgets || {};
   const screens = routes.map((route) => {
     const page = `src/pages/${componentNameForScreen(route.id)}.tsx`;
     return {
@@ -519,10 +519,10 @@ function renderCoverage(contract, files, routes) {
       page,
       rendered: Boolean(files[page]),
       renderer: files[page] ? "generator" : "missing",
-      component_usages: componentUsageRecordsForScreen(route.screen, componentContracts, diagnostics)
+      widget_usages: componentUsageRecordsForScreen(route.screen, componentContracts, diagnostics)
     };
   });
-  const usageCount = screens.reduce((total, screen) => total + screen.component_usages.length, 0);
+  const usageCount = screens.reduce((total, screen) => total + screen.widget_usages.length, 0);
   const errorCount = diagnostics.filter((diagnostic) => diagnostic.severity === "error").length;
   const warningCount = diagnostics.filter((diagnostic) => diagnostic.severity === "warning").length;
   return {
@@ -532,15 +532,15 @@ function renderCoverage(contract, files, routes) {
     projection: {
       id: contract.projection?.id,
       name: contract.projection?.name,
-      platform: contract.projection?.platform
+      type: contract.projection?.type
     },
     summary: {
       routed_screens: screens.length,
       rendered_screens: screens.filter((screen) => screen.rendered).length,
       implementation_screens: 0,
       generator_screens: screens.filter((screen) => screen.renderer === "generator").length,
-      component_usages: usageCount,
-      rendered_component_usages: screens.reduce((total, screen) => total + screen.component_usages.filter((usage) => usage.rendered).length, 0),
+      widget_usages: usageCount,
+      rendered_widget_usages: screens.reduce((total, screen) => total + screen.widget_usages.filter((usage) => usage.rendered).length, 0),
       diagnostics: diagnostics.length,
       errors: errorCount,
       warnings: warningCount
@@ -561,12 +561,12 @@ function assertGenerationCoverage(coverage) {
 }
 
 function generate(context) {
-  const contract = context.contracts?.uiWeb;
+  const contract = context.contracts?.uiSurface;
   if (!contract) {
-    throw new Error("@topogram/generator-react-web requires contracts.uiWeb.");
+    throw new Error("@topogram/generator-react-web requires contracts.uiSurface.");
   }
   const routes = contractRoutes(contract);
-  const projectionId = contract.projection?.id || context.projection?.id || "proj_ui_web";
+  const projectionId = contract.projection?.id || context.projection?.id || "proj_web_surface";
   const brand = contract.appShell?.brand || "Topogram React";
   const files = {
     "package.json": renderPackageJson(projectionId),
@@ -575,11 +575,11 @@ function generate(context) {
     "index.html": renderIndexHtml(brand),
     "src/main.tsx": renderMainTsx(),
     "src/vite-env.d.ts": "/// <reference types=\"vite/client\" />\n",
-    "src/app.css": renderCss(contract.design),
+    "src/app.css": renderCss(contract.designTokens),
     "src/App.tsx": renderAppTsx(contract, routes),
     "src/pages/HomePage.tsx": renderHomePage(contract, routes),
     "src/lib/topogram/api-contracts.json": `${JSON.stringify(context.contracts?.api || {}, null, 2)}\n`,
-    "src/lib/topogram/ui-web-contract.json": `${JSON.stringify(contract, null, 2)}\n`
+    "src/lib/topogram/ui-surface-contract.json": `${JSON.stringify(contract, null, 2)}\n`
   };
   for (const route of routes) {
     files[`src/pages/${componentNameForScreen(route.id)}.tsx`] = renderScreenPage(route);

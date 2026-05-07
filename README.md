@@ -6,7 +6,7 @@ Package-backed Topogram generator for React/Vite web apps.
 
 - Generator id: `@topogram/generator-react-web`
 - Surface: `web`
-- Projection platform: `ui_web`
+- Projection type: `web_surface`
 - Package manifest: `topogram-generator.json`
 - Adapter export: `index.cjs`
 
