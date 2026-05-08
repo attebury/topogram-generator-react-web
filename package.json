@@ -1,6 +1,6 @@
 {
   "name": "@topogram/generator-react-web",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Package-backed Topogram generator for React web apps.",
   "license": "UNLICENSED",
   "private": false,
