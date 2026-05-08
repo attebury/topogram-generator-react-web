@@ -255,6 +255,7 @@ function widgetUsageRecordsForScreen(screen, widgetContracts, diagnostics) {
   return (screen?.widgets || []).map((usage) => {
     const widget = widgetId(usage);
     const support = widgetUsageSupport(usage, widgetContracts);
+    const status = support.supported ? "rendered" : "unsupported";
     if (!support.supported) {
       diagnostics.push({
         code: "widget_pattern_not_supported",
@@ -273,6 +274,7 @@ function widgetUsageRecordsForScreen(screen, widgetContracts, diagnostics) {
       region: usage?.region || null,
       pattern: support.pattern || null,
       supported: support.supported,
+      status,
       rendered: true
     };
   });
