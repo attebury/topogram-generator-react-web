@@ -163,7 +163,9 @@ function sampleItemsForScreen(screen) {
       description: "Generated from Topogram UI contract metadata.",
       category: "sample",
       priority: "medium",
-      created_at: "2026-01-01"
+      status: "active",
+      dueAt: "2026-01-01",
+      ownerId: "sample-owner"
     },
     {
       id: "sample-completed",
@@ -173,7 +175,9 @@ function sampleItemsForScreen(screen) {
       description: "Second generated row for rendering checks.",
       category: "sample",
       priority: "low",
-      created_at: "2026-01-02"
+      status: "complete",
+      dueAt: "2026-01-02",
+      ownerId: "sample-owner"
     }
   ];
 }
@@ -215,12 +219,170 @@ function widgetUsageSupport(usage, widgetContracts) {
   };
 }
 
-function renderWidgetUsage(usage) {
+function displayFields(usage) {
+  const fields = Array.isArray(usage?.displayFields) ? usage.displayFields : usage?.display?.fields || [];
+  return fields.filter((field) => field?.name);
+}
+
+function displayFieldsLiteral(usage) {
+  return JSON.stringify(displayFields(usage).map((field) => ({
+    name: field.name,
+    label: field.label || field.name,
+    role: field.role || "metadata"
+  })));
+}
+
+function fieldNameByRole(usage, roles, fallback) {
+  const fields = displayFields(usage);
+  const match = fields.find((field) => roles.includes(field.role || ""));
+  return match?.name || fields[0]?.name || fallback;
+}
+
+function widgetAttrs(usage, screen) {
+  return [
+    `data-topogram-widget="${escapeHtml(widgetId(usage))}"`,
+    `data-topogram-region="${escapeHtml(usage?.region || "")}"`,
+    `data-topogram-screen="${escapeHtml(screen?.id || "")}"`
+  ].join(" ");
+}
+
+function renderSummaryStats(usage, screen) {
+  const fields = displayFieldsLiteral(usage);
+  return `<section className="widget-card widget-summary" ${widgetAttrs(usage, screen)}>
+          <div className="widget-header">
+            <div>
+              <p className="widget-eyebrow">Widget</p>
+              <h2>${escapeHtml(widgetName(usage))}</h2>
+            </div>
+          </div>
+          <dl className="widget-field-list">
+            {${fields}.map((field) => (
+              <div key={field.name}>
+                <dt>{field.label}</dt>
+                <dd data-topogram-display-field={field.name}>{String(items[0]?.[field.name] ?? "")}</dd>
+              </div>
+            ))}
+          </dl>
+          <div className="summary-grid">
+            <div><strong>{items.length}</strong><span>Total</span></div>
+            <div><strong>{${fields}.length}</strong><span>Fields</span></div>
+            <div><strong>{items.filter((item) => item && (item.id ?? item.uuid ?? item.key)).length}</strong><span>Identified</span></div>
+          </div>
+        </section>`;
+}
+
+function renderCollectionTable(usage, screen) {
+  const fields = displayFieldsLiteral(usage);
+  return `<div className="widget-card widget-table" ${widgetAttrs(usage, screen)}>
+          <div className="widget-header">
+            <div>
+              <p className="widget-eyebrow">Widget</p>
+              <h2>${escapeHtml(widgetName(usage))}</h2>
+            </div>
+            <span className="badge">{items.length} items</span>
+          </div>
+          <div className="table-wrap widget-table-wrap">
+            <table className="resource-table data-grid">
+              <thead>
+                <tr>
+                  {${fields}.map((field) => (
+                    <th key={field.name} data-topogram-display-field={field.name}>{field.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item: any) => (
+                  <tr key={String(item.id ?? item.title ?? item.name ?? item.message)}>
+                    {${fields}.map((field) => (
+                      <td key={field.name} data-topogram-display-field={field.name}>{String(item?.[field.name] ?? "")}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+}
+
+function renderBoard(usage, screen) {
+  const fields = displayFieldsLiteral(usage);
+  const groupFieldName = fieldNameByRole(usage, ["status", "priority", "metadata"], "status");
+  const titleFieldName = fieldNameByRole(usage, ["primary", "identifier"], "title");
+  const groupField = JSON.stringify(groupFieldName);
+  const titleField = JSON.stringify(titleFieldName);
+  return `<div className="widget-card widget-board" ${widgetAttrs(usage, screen)}>
+          <div className="widget-header">
+            <div>
+              <p className="widget-eyebrow">Widget</p>
+              <h2>${escapeHtml(widgetName(usage))}</h2>
+            </div>
+          </div>
+          <div className="board-grid">
+            {Array.from(new Set(items.map((item: any) => item?.[${groupField}] ?? "items"))).map((group) => (
+              <section className="board-column" key={String(group)}>
+                <h3>{String(group)}</h3>
+                {items.filter((item: any) => (item?.[${groupField}] ?? "items") === group).map((item: any) => (
+                  <div className="board-card" key={String(item.id ?? item.title ?? item.name)}>
+                    <strong data-topogram-display-field="${escapeHtml(titleFieldName)}">{item?.[${titleField}] ?? item.title ?? item.name ?? item.label ?? item.message ?? item.id ?? JSON.stringify(item)}</strong>
+                    <dl className="widget-field-list">
+                      {${fields}.map((field) => (
+                        <div key={field.name}>
+                          <dt>{field.label}</dt>
+                          <dd data-topogram-display-field={field.name}>{String(item?.[field.name] ?? "")}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ))}
+              </section>
+            ))}
+          </div>
+        </div>`;
+}
+
+function renderCalendar(usage, screen) {
+  const fields = displayFieldsLiteral(usage);
+  const dateFieldName = fieldNameByRole(usage, ["date"], "dueAt");
+  const titleFieldName = fieldNameByRole(usage, ["primary", "identifier"], "title");
+  const dateField = JSON.stringify(dateFieldName);
+  const titleField = JSON.stringify(titleFieldName);
+  return `<div className="widget-card widget-calendar" ${widgetAttrs(usage, screen)}>
+          <div className="widget-header">
+            <div>
+              <p className="widget-eyebrow">Widget</p>
+              <h2>${escapeHtml(widgetName(usage))}</h2>
+            </div>
+          </div>
+          <div className="calendar-list">
+            {items.filter((item: any) => item?.[${dateField}]).map((item: any) => (
+              <div className="calendar-card" key={String(item.id ?? item.title ?? item.name)}>
+                <span data-topogram-display-field="${escapeHtml(dateFieldName)}">{item?.[${dateField}]}</span>
+                <strong data-topogram-display-field="${escapeHtml(titleFieldName)}">{item?.[${titleField}] ?? item.title ?? item.name ?? item.label ?? item.message ?? item.id ?? JSON.stringify(item)}</strong>
+                <dl className="widget-field-list">
+                  {${fields}.map((field) => (
+                    <div key={field.name}>
+                      <dt>{field.label}</dt>
+                      <dd data-topogram-display-field={field.name}>{String(item?.[field.name] ?? "")}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ))}
+          </div>
+        </div>`;
+}
+
+function renderWidgetUsage(usage, screen, widgetContracts) {
+  const pattern = widgetUsageSupport(usage, widgetContracts).pattern;
+  if (pattern === "summary_stats") return renderSummaryStats(usage, screen);
+  if (pattern === "board_view") return renderBoard(usage, screen);
+  if (pattern === "calendar_view") return renderCalendar(usage, screen);
+  if (pattern === "resource_table" || pattern === "data_grid_view") return renderCollectionTable(usage, screen);
   const id = escapeHtml(widgetId(usage));
   const name = escapeHtml(widgetName(usage));
   const region = escapeHtml(usage?.region || "region");
   return [
-    '<section className="widget-card widget-generic" data-topogram-widget="' + id + '">',
+    '<section className="widget-card widget-generic" ' + widgetAttrs(usage, screen) + '>',
     '  <p className="widget-eyebrow">' + region + ' widget</p>',
     '  <h2>' + name + '</h2>',
     '  <p className="muted">Rendered from the Topogram widget contract.</p>',
@@ -228,8 +390,8 @@ function renderWidgetUsage(usage) {
   ].join("\n");
 }
 
-function renderWidgetSections(screen) {
-  return (screen?.widgets || []).map(renderWidgetUsage).filter(Boolean).join("\n\n");
+function renderWidgetSections(screen, widgetContracts) {
+  return (screen?.widgets || []).map((usage) => renderWidgetUsage(usage, screen, widgetContracts)).filter(Boolean).join("\n\n");
 }
 
 function renderSampleRowsSection() {
@@ -251,11 +413,24 @@ function renderSampleRowsSection() {
   ].join("\n");
 }
 
-function widgetUsageRecordsForScreen(screen, widgetContracts, diagnostics) {
+function widgetUsageRecordsForScreen(screen, widgetContracts, diagnostics, contents) {
   return (screen?.widgets || []).map((usage) => {
     const widget = widgetId(usage);
     const support = widgetUsageSupport(usage, widgetContracts);
     const status = support.supported ? "rendered" : "unsupported";
+    const fields = displayFields(usage);
+    const displayFieldMarkers = fields.map((field) => ({
+      name: field.name,
+      label: field.label || field.name,
+      role: field.role || "metadata",
+      rendered: Boolean(contents && contents.includes(`"name":"${field.name}"`) && contents.includes("data-topogram-display-field"))
+    }));
+    const displayFieldsRendered = fields.length > 0 && displayFieldMarkers.every((field) => field.rendered);
+    const actualMarkers = {
+      widget: Boolean(contents && contents.includes(`data-topogram-widget="${widget}"`)),
+      region: Boolean(contents && contents.includes(`data-topogram-region="${usage?.region || ""}"`)),
+      screen: Boolean(contents && contents.includes(`data-topogram-screen="${screen?.id || ""}"`))
+    };
     if (!support.supported) {
       diagnostics.push({
         code: "widget_pattern_not_supported",
@@ -269,13 +444,51 @@ function widgetUsageRecordsForScreen(screen, widgetContracts, diagnostics) {
         suggested_fix: "Use a supported widget pattern for this generator or provide an implementation override."
       });
     }
+    if (support.supported && fields.length === 0) {
+      diagnostics.push({
+        code: "widget_display_fields_unresolved",
+        severity: "error",
+        screen: screen?.id || null,
+        route: screen?.route || null,
+        region: usage?.region || null,
+        pattern: support.pattern || null,
+        widget,
+        message: `Screen '${screen?.id || "unknown"}' uses widget '${widget}' but no contract display fields were resolved.`,
+        suggested_fix: "Bind widget data to a capability with an output shape or add screen item/view/input shape metadata."
+      });
+    }
+    if (support.supported && fields.length > 0 && !displayFieldsRendered) {
+      diagnostics.push({
+        code: "widget_display_fields_not_rendered",
+        severity: "error",
+        screen: screen?.id || null,
+        route: screen?.route || null,
+        region: usage?.region || null,
+        pattern: support.pattern || null,
+        widget,
+        message: `Screen '${screen?.id || "unknown"}' uses widget '${widget}' but the generated React page does not render the contract display fields.`,
+        suggested_fix: "Render widget rows from usage.displayFields and preserve data-topogram-display-field markers."
+      });
+    }
     return {
       widget,
       region: usage?.region || null,
       pattern: support.pattern || null,
       supported: support.supported,
       status,
-      rendered: true
+      rendered: actualMarkers.widget && actualMarkers.region && actualMarkers.screen,
+      markers: {
+        expected: {
+          widget: `data-topogram-widget="${widget}"`,
+          region: `data-topogram-region="${usage?.region || ""}"`,
+          screen: `data-topogram-screen="${screen?.id || ""}"`
+        },
+        actual: actualMarkers
+      },
+      display: usage.display || null,
+      display_fields: displayFieldMarkers,
+      display_fields_rendered: displayFieldsRendered,
+      behavior_realizations: usage.behaviorRealizations || []
     };
   });
 }
@@ -417,7 +630,7 @@ export function HomePage() {
 function renderScreenPage(route) {
   const screen = route.screen || {};
   const items = sampleItemsForScreen(screen);
-  const sampleSection = renderWidgetSections(screen) || renderSampleRowsSection();
+  const sampleSection = renderWidgetSections(screen, route.contract?.widgets || {}) || renderSampleRowsSection();
   return `const items: any[] = ${JSON.stringify(items, null, 2)};
 
 export function ${componentNameForScreen(route.id)}() {
@@ -501,7 +714,21 @@ main { max-width: 72rem; margin: 0 auto; padding: var(--topogram-page-padding); 
 .resource-list li { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem; border: 1px solid #e0e8f1; border-radius: 14px; background: #fbfcfe; }
 .resource-meta { display: grid; gap: 0.35rem; }
 .widget-card { border: 1px solid #d7e1ec; border-radius: 14px; background: #fbfcfe; padding: 1rem; margin-top: 1rem; }
+.widget-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .widget-eyebrow { margin: 0 0 0.25rem; color: #607284; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.table-wrap, .widget-table-wrap { margin-top: 1rem; overflow-x: auto; border: 1px solid #d7e1ec; border-radius: 14px; background: white; }
+.resource-table { width: 100%; border-collapse: collapse; min-width: 42rem; }
+.resource-table th, .resource-table td { padding: 0.85rem 1rem; text-align: left; border-bottom: 1px solid #e7edf5; vertical-align: top; }
+.resource-table th { font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; color: #516173; background: #f8fbff; }
+.data-grid { min-width: 64rem; font-size: 0.95rem; }
+.summary-grid, .board-grid, .calendar-list { display: grid; gap: 0.75rem; margin-top: 1rem; }
+.summary-grid { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+.board-grid { grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
+.summary-grid div, .board-column, .board-card, .calendar-card { border: 1px solid #e0e8f1; border-radius: 12px; background: white; padding: 0.85rem; }
+.widget-field-list { display: grid; gap: 0.35rem; margin: 0.75rem 0 0; }
+.widget-field-list div { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 0.75rem; align-items: baseline; }
+.widget-field-list dt { color: #607284; font-size: 0.8rem; font-weight: 700; }
+.widget-field-list dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.6rem; border-radius: 999px; background: #eef4ff; color: #0f5cc0; font-size: 0.85rem; font-weight: 600; }
 .muted { color: var(--topogram-muted-color); }
 @media (max-width: 640px) { .resource-list li { flex-direction: column; } .app-nav { flex-wrap: wrap; } }
@@ -521,7 +748,7 @@ function renderCoverage(contract, files, routes) {
       page,
       rendered: Boolean(files[page]),
       renderer: files[page] ? "generator" : "missing",
-      widget_usages: widgetUsageRecordsForScreen(route.screen, widgetContracts, diagnostics)
+      widget_usages: widgetUsageRecordsForScreen(route.screen, widgetContracts, diagnostics, files[page] || "")
     };
   });
   const usageCount = screens.reduce((total, screen) => total + screen.widget_usages.length, 0);
@@ -543,6 +770,7 @@ function renderCoverage(contract, files, routes) {
       generator_screens: screens.filter((screen) => screen.renderer === "generator").length,
       widget_usages: usageCount,
       rendered_widget_usages: screens.reduce((total, screen) => total + screen.widget_usages.filter((usage) => usage.rendered).length, 0),
+      display_field_widget_usages: screens.reduce((total, screen) => total + screen.widget_usages.filter((usage) => usage.display_fields_rendered).length, 0),
       diagnostics: diagnostics.length,
       errors: errorCount,
       warnings: warningCount
@@ -584,7 +812,7 @@ function generate(context) {
     "src/lib/topogram/ui-surface-contract.json": `${JSON.stringify(contract, null, 2)}\n`
   };
   for (const route of routes) {
-    files[`src/pages/${componentNameForScreen(route.id)}.tsx`] = renderScreenPage(route);
+    files[`src/pages/${componentNameForScreen(route.id)}.tsx`] = renderScreenPage({ ...route, contract });
   }
   const coverage = renderCoverage(contract, files, routes);
   assertGenerationCoverage(coverage);
